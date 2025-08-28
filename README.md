@@ -15,6 +15,11 @@ Update all HP device drivers with a single command: `Get-HPDrivers`
 
 ## Release Notes
 
+v2.0
+- Added **DownloadOnly** switch: skips the install step and only prepares the driver folder (`.\HpDriver`).
+- CAB and XML files are no longer removed each time the script runs. The XML is now stored and named per model and OS.
+- Added **Offline** switch: skips XML download and uses the previously stored XML instead.
+
 v1.4.3
 - Added search for latest drivers even if available driver version on HP servers is older than current Windows version (for older computers)
 - Added HP software (e.g. dock firmware, manageability, diagnostic) to -ShowSoftware parameter
@@ -73,6 +78,10 @@ The HPDrivers module downloads and installs HP SoftPaqs that match to the operat
 
 `-SuspendBL` [switch]  - Suspend BitLocker protection for one restart
 
+`-DownloadOnly` [switch] - Download all drivers to .\hpdrivers\ , no Out-GridView select. 
+
+`-Offline` [switch] - Install drivers from .\hpdrivers\ no need for internet connection. 
+
 <br>
 
 ## Examples
@@ -111,4 +120,5 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Force
 Install-PackageProvider -Name NuGet -RequiredVersion 2.8.5.201 -Force
 Install-Module -Name HPDrivers -Force
 Get-HPDrivers -NoPrompt -BIOS -DeleteInstallationFiles
+
 ```
