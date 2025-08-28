@@ -121,7 +121,8 @@ Parameters
 -BIOS [switch] - Update BIOS to the latest version
 -DeleteInstallationFiles [switch] - Delete the HP SoftPaq installation files stored in C:\Temp\HPDrivers
 -SuspendBL [switch]  - Suspend BitLocker protection for one restart
-
+-DownloadOnly [switch] - Download all drivers to .\hpdrivers\ , no Out-GridView select. 
+-Offline [switch] - Install drivers from .\hpdrivers\ no need for internet connection. 
 
 Examples
 
