@@ -74,7 +74,7 @@ The HPDrivers module downloads and installs HP SoftPaqs that match to the operat
 
 `-BIOS` [switch] - Update BIOS to the latest version
 
-`-DeleteInstallationFiles` [switch] - Delete the HP SoftPaq installation files stored in C:\Temp\HPDrivers
+`-DeleteInstallationFiles` [switch] - Delete the HP SoftPaq installation files stored in .\hpdrivers\
 
 `-SuspendBL` [switch]  - Suspend BitLocker protection for one restart
 
@@ -114,7 +114,24 @@ Get-HPDrivers -OsVersion '22H2'
 
 <br>
 
-Example 5: Automatic driver installation. Can be part of a deployment script.
+<br>
+
+Example 5: Skips installation and only prepares the driver folder (`.\HPDrivers`) with the required packages.
+
+```powershell
+.\HpDriver.ps1 -DownloadOnly
+```
+
+<br>
+<br>
+
+Example 6: Skips downloading the XML and uses the previously stored, model/OS-specific XML from `.\HPDrivers`.
+
+```powershell
+.\HpDriver.ps1 -Offline
+```
+
+Example 6: Automatic driver installation. Can be part of a deployment script.
 ```powershell
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Force
 Install-PackageProvider -Name NuGet -RequiredVersion 2.8.5.201 -Force
@@ -122,3 +139,4 @@ Install-Module -Name HPDrivers -Force
 Get-HPDrivers -NoPrompt -BIOS -DeleteInstallationFiles
 
 ```
+
