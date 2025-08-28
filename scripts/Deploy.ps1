@@ -2,7 +2,7 @@ $param = @{
     Author            = 'Dawid Prowadzisz'
     RootModule        = 'HPDrivers.psm1'
     Path              = 'HPDrivers.psd1'
-    ModuleVersion     = '1.4.3'
+    ModuleVersion     = '2.0'
     GUID              = 'f87cbea8-7a55-47a4-b226-110750dd328d'
     Description       = 'Update all HP device drivers with a single command.'
     Copyright         = '(c) 2023 Dawid Prowadzisz. All rights reserved.'
@@ -36,9 +36,10 @@ Parameters
 -ShowSoftware [switch] - Show additional HP software in the driver list
 -Overwrite [switch] - Install drivers even if the current driver version is the same
 -BIOS [switch] - Update BIOS to the latest version
--DeleteInstallationFiles [switch] - Delete the HP SoftPaq installation files stored in C:\Temp\HPDrivers
--SuspendBL [switch]  - Suspend BitLocker protection for one restart
-
+-DeleteInstallationFiles [switch] - Delete the HP SoftPaq installation files stored in .\hpdrivers\
+-SuspendBL [switch] - Suspend BitLocker protection for one restart
+-DownloadOnly [switch] - Download all drivers to .\hpdrivers\ , no Out-GridView select. 
+-Offline [switch] - Install drivers from .\hpdrivers\ no need for internet connection. 
 
 Examples
 
