@@ -12,7 +12,7 @@
 RootModule = 'HPDrivers.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.4.3'
+ModuleVersion = '2.0'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -148,7 +148,10 @@ Example 4:
 Get-HPDrivers -OsVersion 22H2
 
 Show a list of available drivers that match the current platform and Windows 22H2. The selected drivers will be installed automatically.
-
+## v2.0
+- Added DownloadOnly switch , just skips the install part. Use to prepare driver folder .\HpDriver.
+- CAB and XML is not removed every time the script runs, now XML is stored and named for each model and os. 
+- Added Offline switch that skips download of XML and uses previos XML.
 
 ## v1.4.3
 - Added search for latest drivers even if available driver version on HP servers is older than current Windows version (for older computers)
