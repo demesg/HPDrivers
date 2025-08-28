@@ -38,12 +38,12 @@ function WriteToHPDriversLog ([Parameter(Mandatory = $false)] [string]$Status) {
 
     $TimeStamp = (Get-Date).ToString("[yyy-MM-dd HH:mm:sss]")
     $LogMessage = $TimeStamp + ' - ' + $Number + ' - ' + $Status + ' - ' + $AvailableSpVersion + ' - ' + $Name
-    $LogMessage | Out-File -FilePath "C:\Temp\HPDrivers\InstalledHPDrivers.log" -Append
+    $LogMessage | Out-File -FilePath "$PWD\HPDrivers\InstalledHPDrivers.log" -Append
 
     # Collect occurred errors
     foreach ($Entry in $Error) {
         $ErrorMessage = $TimeStamp + ' - ' + $Entry
-        $ErrorMessage | Out-File -FilePath "C:\Temp\HPDrivers\HPDriversError.log" -Append
+        $ErrorMessage | Out-File -FilePath "$PWD\HPDrivers\HPDriversError.log" -Append
     }
     $Error.Clear()
 }
@@ -56,6 +56,7 @@ function Get-HPDrivers {
 
     .DESCRIPTION
         The HPDrivers module downloads and installs softpaqs that match the operating system version and hardware configuration.
+        Can run in offline mode and caches previous downloaded drivers.
 
     .PARAMETER NoPrompt
         Download and install all drivers.
@@ -73,13 +74,19 @@ function Get-HPDrivers {
         Update the BIOS to the latest version.
 
     .PARAMETER DeleteInstallationFiles
-        Delete the HP SoftPaq installation files stored in C:\Temp\HPDrivers.
+        Delete the HP SoftPaq installation files stored in $PWD\HPDrivers.
 
     .PARAMETER SuspendBL
         Suspend BitLocker protection for one restart.
+    
+    .PARAMETER Offline
+        Use cached downloads, no need for Internet.
+    
+    .PARAMETER DownloadOnly
+        Skip driver install.
 
     .LINK
-        https://github.com/UsefulScripts01/HPDrivers
+        https://github.com/demesg/HPDrivers
 
     .LINK
         https://www.powershellgallery.com/packages/HPDrivers
@@ -104,6 +111,16 @@ function Get-HPDrivers {
 
         Show a list of available drivers that match the current platform and Windows 22H2. The selected drivers will be installed automatically.
 
+    .EXAMPLE
+        Get-HPDrivers -DownloadOnly -NoPrompt
+
+        Download all drivers to .\hpdrivers\ , no Out-GridView select. 
+    
+    .EXAMPLE
+        Get-HPDrivers -offline
+
+        Install selected drivers from local cache in .\hpdrivers\ . 
+
     #>
 
     [CmdletBinding()]
@@ -114,7 +131,9 @@ function Get-HPDrivers {
         [Parameter(Mandatory = $false)] [switch]$Overwrite,
         [Parameter(Mandatory = $false)] [switch]$BIOS,
         [Parameter(Mandatory = $false)] [switch]$DeleteInstallationFiles,
-        [Parameter(Mandatory = $false)] [switch]$SuspendBL
+        [Parameter(Mandatory = $false)] [switch]$SuspendBL,
+        [Parameter(Mandatory = $false)] [switch]$Offline,
+        [Parameter(Mandatory = $false)] [switch]$DownloadOnly
     )
 
     $ProgressPreference = 'Continue'
@@ -139,7 +158,7 @@ function Get-HPDrivers {
 
         # test connectio with hpia.hpcloud.hp.com
         $TestConn = Test-Connection "hpia.hpcloud.hp.com" -Count 2 -ErrorAction Ignore
-        if (!$TestConn) {
+        if (!$TestConn -and !$Offline) {
             Write-Output `n
             Write-Warning "hpia.hpcloud.hp.com is unavailable!`nPlease check your internet connection or try again later..`n"
             Break
@@ -153,28 +172,28 @@ function Get-HPDrivers {
         }
 
         # create the path
-        if (!(Test-Path -Path "C:\Temp\HPDrivers")) {
-            New-Item -ItemType Directory -Path "C:\Temp\HPDrivers" -Force
+        if (!(Test-Path -Path "$PWD\HPDrivers")) {
+            New-Item -ItemType Directory -Path "$PWD\HPDrivers" -Force
         }
-        Set-Location -Path "C:\Temp\HPDrivers"
+        #Set-Location -Path "$PWD\HPDrivers"
 
         # Remove the old files
-        Get-ChildItem -Path "C:\Temp\HPDrivers\*.xml" | Remove-Item
-        Get-ChildItem -Path "C:\Temp\HPDrivers\*.cab" | Remove-Item
+        #Get-ChildItem -Path "$PWD\HPDrivers\*.xml" | Remove-Item
+        #Get-ChildItem -Path "$PWD\HPDrivers\*.cab" | Remove-Item
 
         # Download the CAB file containing the XML list of drivers that match your current machine
         if (!$OsVersion) {
-            while (!(Test-Path -Path "C:\Temp\HPDrivers\HpDrivers.xml")) {
+            while (!(Test-Path -Path "$PWD\HPDrivers\$($BaseBoard.Product)_64_${OsType}.0.${OsVer}.xml")) {
                 try {
                     $CabUri = ("https://hpia.hpcloud.hp.com/ref/$($BaseBoard.Product)/$($BaseBoard.Product)_64_${OsType}.0.${OsVer}.cab").ToLower()
                     $WebClient = New-Object -TypeName System.Net.WebClient
-                    $WebClient.DownloadFile($CabUri, 'C:\Temp\HPDrivers\HP.cab')
+                    $WebClient.DownloadFile($CabUri, "$PWD\HPDrivers\$($BaseBoard.Product)_64_${OsType}.0.${OsVer}.cab")
 
-                    Invoke-Expression -Command "expand C:\Temp\HPDrivers\HP.cab C:\Temp\HPDrivers\HpDrivers.xml" | Out-Null
-                    [XML]$Script:XML = Get-Content -Path "C:\Temp\HPDrivers\HpDrivers.xml"
-
+                    Invoke-Expression -Command "expand '$PWD\HPDrivers\$($BaseBoard.Product)_64_${OsType}.0.${OsVer}.cab' '$PWD\HPDrivers\$($BaseBoard.Product)_64_${OsType}.0.${OsVer}.xml'" | Out-Null
+                    
                     Write-Output `n
                     Write-Verbose "Latest drivers found: $($ComputerSystem.Model) - Windows $($OsVer.ToUpper()).." -Verbose
+                    "$($ComputerSystem.Model) - $($BaseBoard.Product)_64_${OsType}.0.${OsVer}" | Out-File -FilePath "$PWD\HPDrivers\Models.txt" -Append
                 }
                 catch {
                     # Try to set the previous version
@@ -194,6 +213,8 @@ function Get-HPDrivers {
                     }
                 }
             }
+        }elseif ($Offline){
+                Write-Verbose "Offline mode.." -Verbose
         }
 
         # If the operating system version is defined in the parameter
@@ -201,24 +222,34 @@ function Get-HPDrivers {
             try {
                 $CabUri = ("https://hpia.hpcloud.hp.com/ref/$($BaseBoard.Product)/$($BaseBoard.Product)_64_${OsType}.0.${OsVersion}.cab").ToLower()
                 $WebClient = New-Object -TypeName System.Net.WebClient
-                $WebClient.DownloadFile($CabUri, 'C:\Temp\HPDrivers\HP.cab')
+                    $WebClient.DownloadFile($CabUri, "$PWD\HPDrivers\$($BaseBoard.Product)_64_${OsType}.0.${OsVersion}.cab")
 
-                Invoke-Expression -Command "expand C:\Temp\HPDrivers\HP.cab C:\Temp\HPDrivers\HpDrivers.xml" | Out-Null
-                [XML]$Script:XML = Get-Content -Path "C:\Temp\HPDrivers\HpDrivers.xml"
+                    Invoke-Expression -Command "expand '$PWD\HPDrivers\$($BaseBoard.Product)_64_${OsType}.0.${OsVersion}.cab' '$PWD\HPDrivers\$($BaseBoard.Product)_64_${OsType}.0.${OsVersion}.xml'" | Out-Null
 
                 Write-Output `n
                 Write-Verbose "Latest drivers found: $($ComputerSystem.Model) - Windows $($OsVersion.ToUpper()).." -Verbose
+                "$($ComputerSystem.Model) - $($BaseBoard.Product)_64_${OsType}.0.${OsVer}" | Out-File -FilePath "$PWD\HPDrivers\Models.txt" -Append
 
             }
             catch {
                 Write-Warning "Could not find drivers that match your model ($($ComputerSystem.Model)) - Windows $($OsVersion.ToUpper()).."
                 Break
             }
+        }elseif ($Offline){
+                Write-Verbose "Offline mode.." -Verbose
+        }
+        
+        if (Test-Path -Path "$PWD\HPDrivers\$($BaseBoard.Product)_64_${OsType}.0.${OsVer}.xml") {
+            [XML]$Script:XML = Get-Content -Path "$PWD\HPDrivers\$($BaseBoard.Product)_64_${OsType}.0.${OsVer}.xml"
+            Write-Verbose "$($ComputerSystem.Model) uses definition file: $($BaseBoard.Product)_64_${OsType}.0.${OsVer}.xml" -Verbose
+        }else{
+            Write-Warning "Could not find local definition file ($($BaseBoard.Product)_64_${OsType}.0.${OsVer}.xml) that match your model ($($ComputerSystem.Model))"
         }
 
+
         # Remove the old files
-        Get-ChildItem -Path "C:\Temp\HPDrivers\*.xml" | Remove-Item
-        Get-ChildItem -Path "C:\Temp\HPDrivers\*.cab" | Remove-Item
+        #Get-ChildItem -Path "$PWD\HPDrivers\$($BaseBoard.Product)_64_${OsType}.0.${OsVersion}.xml" | Remove-Item
+        #Get-ChildItem -Path "$PWD\HPDrivers\$($BaseBoard.Product)_64_${OsType}.0.${OsVersion}.cab" | Remove-Item
 
         # Sort the driver list
         # 'Driverpack' = $Xml.ImagePal.Solutions.UpdateInfo | Where-Object { $_.Category -match 'Driverpack' }
@@ -267,11 +298,11 @@ function Get-HPDrivers {
         $Date = Get-Date -Format "yyyy-MM-dd"
         $HR = "-" * 100
         $Line = "[$Date]" + " " + $HR
-        $Line | Out-File -FilePath "C:\Temp\HPDrivers\InstalledHPDrivers.log" -Append
+        $Line | Out-File -FilePath "$PWD\HPDrivers\InstalledHPDrivers.log" -Append
 
         # Show list of available drivers
         if ($SpList) {
-            Write-Verbose "The script will install the following drivers. Please wait..`n" -Verbose
+            Write-Verbose "The script will process the following drivers. Please wait..`n" -Verbose
             $SpList | Select-Object -Property Id, Name, Version, Size, DateReleased | Format-Table -AutoSize
         }
         if ($BadLinks) {
@@ -309,19 +340,24 @@ function Get-HPDrivers {
                 try {
                     # Download a softpaq (5 attempts)
                     $Count = 1
-                    while (!(Test-Path -Path "C:\Temp\HPDrivers\${Number}.exe") -and ($Count -le 5)) {
+                    while (!(Test-Path -Path "$PWD\HPDrivers\${Number}.exe") -and ($Count -le 5)) {
                         Get-BitsTransfer | Remove-BitsTransfer
-                        Start-BitsTransfer -Source "https://${Source}" -Destination "C:\Temp\HPDrivers" -DisplayName "Downloading (attempt ${Count}/5):" -Description $Name -Dynamic -ErrorAction Ignore
+                        Start-BitsTransfer -Source "https://${Source}" -Destination "$PWD\HPDrivers" -DisplayName "Downloading (attempt ${Count}/5):" -Description $Name -Dynamic -ErrorAction Ignore
                         $Count += 1
                     }
 
                     # Checksum
-                    $SPFileExist = Test-Path -Path "C:\Temp\HPDrivers\${Number}.exe"
-                    $SPFileChecksum = (Get-FileHash -Path "C:\Temp\HPDrivers\${Number}.exe" -Algorithm SHA256).Hash
+                    $SPFileExist = Test-Path -Path "$PWD\HPDrivers\${Number}.exe"
+                    $SPFileChecksum = (Get-FileHash -Path "$PWD\HPDrivers\${Number}.exe" -Algorithm SHA256).Hash
                     $OryginalChecksum = ($AvailableDrivers | Where-Object { $_.Id -eq $Number }).SHA256
 
                     # Checksum is OK
                     if ($SPFileExist -or ($SPFileChecksum -eq $OryginalChecksum)) {
+                        # Only Download
+                        if ($DownloadOnly){
+                            Write-Verbose "Downloaded: 'https://${Source}' to '.\HPDrivers\${Number}.exe'`n" -Verbose     
+                            Continue                  
+                        }
 
                         # Installation process
                         $SetupFile = $SilentInstall.Split()[0].Trim('"')
@@ -330,13 +366,13 @@ function Get-HPDrivers {
 
                         # Setup.exe files with a special params
                         if ($Param) {
-                            Start-Process -FilePath "C:\Temp\HpDrivers\$Number" -Wait -ArgumentList "/s /e /f C:\SWSetup\$Number"
+                            Start-Process -FilePath "$PWD\HpDrivers\$Number" -Wait -ArgumentList "/s /e /f C:\SWSetup\$Number"
                             Start-Process -FilePath "C:\SWSetup\$Number\$SetupFile" -Wait -ArgumentList $Param
                         }
 
                         # CMD Wrapper, HPUP and other installers
                         if (!$Param) {
-                            Start-Process -FilePath "C:\Temp\HpDrivers\${Number}.exe" -Wait -ArgumentList "/s /f C:\SWSetup\$Number"
+                            Start-Process -FilePath "$PWD\HpDrivers\${Number}.exe" -Wait -ArgumentList "/s /f C:\SWSetup\$Number"
                         }
 
                         # Save file with installd version
@@ -361,9 +397,13 @@ function Get-HPDrivers {
                 }
 
                 # remove installation files
-                if ($DeleteInstallationFiles -and (Test-Path -Path "C:\Temp\HPDrivers")) {
-                    Get-ChildItem -Path "C:\Temp\HPDrivers\${Number}.exe" | Remove-Item -Force
+                if ($DeleteInstallationFiles -and (Test-Path -Path "$PWD\HPDrivers")) {
+                    Get-ChildItem -Path "$PWD\HPDrivers\${Number}.exe" | Remove-Item -Force
                 }
+            }
+
+            if ($DownloadOnly){
+                Continue                  
             }
 
             # if the driver is up to date
@@ -385,8 +425,8 @@ function Get-HPDrivers {
         }
 
         # remove installation files
-        if ($DeleteInstallationFiles -and (Test-Path -Path "C:\Temp\HPDrivers")) {
-            Get-ChildItem -Path "C:\Temp\HPDrivers" -Filter "*.exe" | Remove-Item -Force
+        if ($DeleteInstallationFiles -and (Test-Path -Path "$PWD\HPDrivers")) {
+            Get-ChildItem -Path "$PWD\HPDrivers" -Filter "*.exe" | Remove-Item -Force
         }
     }
 }
