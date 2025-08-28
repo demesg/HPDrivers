@@ -114,8 +114,6 @@ Get-HPDrivers -OsVersion '22H2'
 
 <br>
 
-<br>
-
 Example 5: Skips installation and only prepares the driver folder (`.\HPDrivers`) with the required packages.
 
 ```powershell
@@ -123,13 +121,14 @@ Example 5: Skips installation and only prepares the driver folder (`.\HPDrivers`
 ```
 
 <br>
-<br>
 
 Example 6: Skips downloading the XML and uses the previously stored, model/OS-specific XML from `.\HPDrivers`.
 
 ```powershell
 .\HpDriver.ps1 -Offline
 ```
+
+<br>
 
 Example 6: Automatic driver installation. Can be part of a deployment script.
 ```powershell
@@ -139,4 +138,5 @@ Install-Module -Name HPDrivers -Force
 Get-HPDrivers -NoPrompt -BIOS -DeleteInstallationFiles
 
 ```
+
 
