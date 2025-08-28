@@ -150,9 +150,11 @@ Get-HPDrivers -OsVersion 22H2
 
 Show a list of available drivers that match the current platform and Windows 22H2. The selected drivers will be installed automatically.
 ## v2.0
-- Added DownloadOnly switch , just skips the install part. Use to prepare driver folder .\HpDriver.
-- CAB and XML is not removed every time the script runs, now XML is stored and named for each model and os. 
-- Added Offline switch that skips download of XML and uses previos XML.
+- Added **DownloadOnly** switch: skips the install step and only prepares the driver folder (`.\HpDriver`).
+- CAB and XML files are no longer removed each time the script runs. The XML is now stored and named per model and OS.
+- Added **Offline** switch: skips XML download and uses the previously stored XML instead.
+- Script no longer uses `C:\Temp\HPDrivers\`. The **HPDrivers** folder is now always created in the same directory as the script, enabling execution directly from a USB stick without re-downloading all packages.
+
 
 ## v1.4.3
 - Added search for latest drivers even if available driver version on HP servers is older than current Windows version (for older computers)
